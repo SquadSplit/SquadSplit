@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Bill Tracker 🧾</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg:#0b0b18;--card:#13132a;--card2:#1a1a35;--border:#2a2a50;
+  --accent1:#ff6b6b;--accent2:#ffd93d;--accent3:#6bcb77;--accent4:#4d96ff;--accent5:#ff922b;
+  --purple:#b06aff;--text:#f0f0ff;--muted:#7777aa;--red:#ff6b6b;--green:#6bcb77;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+.bg-mesh{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse 600px 400px at 10% 20%,rgba(77,150,255,.08) 0%,transparent 70%),
+  radial-gradient(ellipse 500px 500px at 90% 80%,rgba(176,106,255,.08) 0%,transparent 70%),
+  radial-gradient(ellipse 400px 300px at 50% 50%,rgba(255,217,61,.05) 0%,transparent 70%);}
+.screen{display:none;position:relative;z-index:1;min-height:100vh;}
+.screen.active{display:flex;flex-direction:column;}
+#screen-login{align-items:center;justify-content:center;padding:24px;}
+.login-box{width:100%;max-width:420px;background:var(--card);border:1px solid var(--border);border-radius:24px;padding:36px 28px;box-shadow:0 24px 80px rgba(0,0,0,.5);animation:slideUp .5s ease;}
+@keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+.login-logo{text-align:center;margin-bottom:28px;}
+.login-logo .logo-icon{font-size:3.5rem;display:block;animation:bounce 2s ease-in-out infinite;}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.login-logo h1{font-family:'Fredoka One',cursive;font-size:2rem;background:linear-gradient(135deg,#4d96ff,#b06aff,#ff92d0);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-top:4px;}
+.login-logo p{color:var(--muted);font-size:.82rem;margin-top:4px;}
+.step{display:none;}.step.active{display:block;animation:fadeIn .3s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.form-label{display:block;font-size:.78rem;font-weight:800;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;}
+.form-input{width:100%;background:var(--card2);border:2px solid var(--border);border-radius:12px;padding:14px 16px;color:var(--text);font-family:'Nunito',sans-serif;font-size:.95rem;outline:none;transition:border-color .2s;margin-bottom:16px;}
+.form-input:focus{border-color:var(--accent4);}.form-input::placeholder{color:var(--muted);}
+.otp-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:16px;}
+.otp-box{background:var(--card2);border:2px solid var(--border);border-radius:12px;padding:14px 0;text-align:center;font-size:1.3rem;font-weight:900;color:var(--text);outline:none;transition:border-color .2s;width:100%;}
+.otp-box:focus{border-color:var(--accent4);box-shadow:0 0 12px rgba(77,150,255,.25);}
+.btn{width:100%;padding:15px;border-radius:14px;border:none;font-family:'Fredoka One',cursive;font-size:1.1rem;cursor:pointer;transition:all .2s;}
+.btn-primary{background:linear-gradient(135deg,#4d96ff,#b06aff);color:#fff;box-shadow:0 4px 20px rgba(77,150,255,.3);margin-bottom:8px;}
+.btn-primary:hover:not(:disabled){transform:translateY(-2px);}.btn-primary:disabled{opacity:.5;cursor:not-allowed;}
+.btn-ghost{background:var(--card2);color:var(--muted);border:1px solid var(--border);font-family:'Nunito',sans-serif;font-size:.85rem;font-weight:700;padding:12px;}
+.btn-ghost:hover{color:var(--text);}
+.error-msg{background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.3);border-radius:10px;padding:10px 14px;font-size:.8rem;color:var(--red);margin-bottom:12px;display:none;}
+.success-msg{background:rgba(107,203,119,.12);border:1px solid rgba(107,203,119,.3);border-radius:10px;padding:10px 14px;font-size:.8rem;color:var(--green);margin-bottom:12px;display:none;}
+.timer-text{text-align:center;font-size:.78rem;color:var(--muted);margin-bottom:12px;}
+.timer-text span{color:var(--accent4);font-weight:800;}
+.not-registered{text-align:center;padding:20px 0;}
+.not-registered .big-emoji{font-size:2.6rem;display:block;margin-bottom:10px;}
+#screen-app{padding-bottom:80px;}
+.app-header{background:linear-gradient(135deg,#0a1a3e,#1a0a2e);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.app-header h2{font-family:'Fredoka One',cursive;font-size:1.3rem;background:linear-gradient(135deg,#4d96ff,#ffd93d);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.app-header p{font-size:.7rem;color:var(--muted);margin-top:1px;}
+.header-right{display:flex;align-items:center;gap:8px;}
+.btn-admin-panel{background:linear-gradient(135deg,#b06aff,#4d96ff);color:#fff;border:none;border-radius:12px;padding:7px 14px;font-family:'Fredoka One',cursive;font-size:.82rem;cursor:pointer;letter-spacing:.3px;box-shadow:0 2px 12px rgba(176,106,255,.35);}
+.btn-admin-panel:hover{transform:scale(1.03);}
+.user-pill{display:flex;align-items:center;gap:6px;background:var(--card2);border-radius:20px;padding:6px 10px;border:1px solid var(--border);cursor:pointer;}
+.av-sm{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.85rem;}
+.uname{font-size:.75rem;font-weight:800;}
+.page{display:none;padding:16px;}.page.active{display:block;animation:fadeIn .25s ease;}
+.section-title{font-family:'Fredoka One',cursive;font-size:1.25rem;color:var(--accent4);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.card{background:var(--card);border-radius:16px;border:1px solid var(--border);padding:16px;margin-bottom:12px;}
+.month-nav{display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:16px;border:1px solid var(--border);padding:12px 16px;margin-bottom:14px;}
+.month-nav button{background:var(--card2);border:1px solid var(--border);color:var(--text);width:34px;height:34px;border-radius:10px;font-size:1rem;cursor:pointer;}
+.month-nav .mtitle{font-family:'Fredoka One',cursive;font-size:1rem;}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.summary-grid .card{margin-bottom:0;text-align:center;padding:14px 10px;}
+.summary-grid .s-label{font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:800;}
+.summary-grid .s-val{font-family:'Fredoka One',cursive;font-size:1.3rem;margin-top:4px;}
+.dhs{display:inline-flex;align-items:center;gap:2px;}
+.report-btn{width:100%;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,#6bcb77,#4d96ff);color:#fff;font-family:'Fredoka One',cursive;font-size:.98rem;cursor:pointer;margin-bottom:16px;box-shadow:0 4px 20px rgba(107,203,119,.25);}
+.report-btn:hover:not(:disabled){transform:translateY(-2px);}
+.report-btn:disabled{opacity:.6;cursor:not-allowed;}
+.exp-item-card{background:var(--card2);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;border:1px solid var(--border);gap:10px;}
+.exp-name{font-weight:800;font-size:.88rem;}.exp-meta{font-size:.68rem;color:var(--muted);margin-top:2px;}
+.exp-icon{font-size:1.3rem;width:36px;height:36px;background:var(--card);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.card-chip{display:inline-block;font-size:.62rem;font-weight:800;padding:2px 8px;border-radius:8px;margin-top:3px;}
+.fg{margin-bottom:14px;}
+.fg label{display:block;font-size:.75rem;font-weight:800;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px;}
+.fg input,.fg select{width:100%;background:var(--card2);border:2px solid var(--border);border-radius:12px;padding:12px 14px;color:var(--text);font-family:'Nunito',sans-serif;font-size:.9rem;outline:none;transition:border-color .2s;}
+.fg input:focus,.fg select:focus{border-color:var(--accent4);}.fg select option{background:var(--card2);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.btn-add{width:100%;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,#6bcb77,#4d96ff);color:#fff;font-family:'Fredoka One',cursive;font-size:1.05rem;cursor:pointer;transition:all .2s;box-shadow:0 4px 20px rgba(107,203,119,.25);}
+.btn-add:hover{transform:translateY(-2px);}
+.cards-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.card-tile{background:var(--card2);border-radius:14px;border:1px solid var(--border);padding:14px 12px;text-align:center;position:relative;}
+.card-tile .cdot{width:30px;height:30px;border-radius:50%;margin:0 auto 8px;}
+.card-tile .cname{font-weight:800;font-size:.85rem;}
+.card-tile .cdel{position:absolute;top:6px;right:8px;background:none;border:none;color:var(--muted);font-size:.9rem;cursor:pointer;}
+.owed-row{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:12px;margin-bottom:8px;border-left:4px solid var(--red);background:var(--card2);}
+.owed-row.settle{border-color:var(--green);}
+.b-left{display:flex;flex-direction:column;}.b-name{font-weight:800;font-size:.88rem;}.b-sub{font-size:.68rem;color:var(--muted);margin-top:2px;}
+.b-amt{font-weight:800;font-size:.95rem;}.b-amt.neg{color:var(--red);}.b-amt.pos{color:var(--green);}
+.empty-state{text-align:center;padding:30px 10px;color:var(--muted);}
+.empty-state span{font-size:2rem;display:block;margin-bottom:8px;}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);display:flex;z-index:50;padding:6px 4px;}
+.nav-btn{flex:1;background:none;border:none;color:var(--muted);padding:8px 4px;text-align:center;cursor:pointer;border-radius:12px;transition:all .15s;}
+.nav-btn .ni{font-size:1.25rem;display:block;}
+.nav-btn .nl{font-size:.62rem;font-weight:800;margin-top:2px;}
+.nav-btn.active{color:var(--accent4);background:rgba(77,150,255,.1);}
+.admin-overlay{position:fixed;inset:0;background:var(--bg);z-index:200;display:none;flex-direction:column;}
+.admin-overlay.active{display:flex;}
+.admin-top{background:linear-gradient(135deg,#1a0a2e,#0a1a3e);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}
+.admin-top h2{font-family:'Fredoka One',cursive;font-size:1.15rem;color:var(--accent1);}
+.close-admin{background:var(--card2);border:1px solid var(--border);color:var(--text);width:34px;height:34px;border-radius:10px;font-size:1rem;cursor:pointer;}
+.admin-tabs{display:flex;gap:6px;padding:10px 16px;overflow-x:auto;border-bottom:1px solid var(--border);}
+.admin-tab-btn{background:var(--card2);border:1px solid var(--border);color:var(--muted);padding:8px 14px;border-radius:10px;font-size:.78rem;font-weight:800;cursor:pointer;white-space:nowrap;}
+.admin-tab-btn.active{background:linear-gradient(135deg,#b06aff,#4d96ff);color:#fff;border-color:transparent;}
+.admin-body{flex:1;overflow-y:auto;padding:16px;}
+.admin-tab-page{display:none;}.admin-tab-page.active{display:block;}
+.user-row{display:flex;align-items:center;justify-content:space-between;background:var(--card2);border-radius:12px;padding:10px 12px;margin-bottom:8px;border:1px solid var(--border);}
+.user-row .u-left{display:flex;align-items:center;gap:10px;}
+.grp-badge{font-size:.6rem;font-weight:800;padding:2px 8px;border-radius:7px;text-transform:uppercase;}
+.grp-squad{background:rgba(255,217,61,.15);color:var(--accent2);}
+.grp-general{background:rgba(77,150,255,.15);color:var(--accent4);}
+.admin-badge2{background:rgba(255,107,107,.2);color:var(--accent1);font-size:.58rem;font-weight:800;padding:1px 6px;border-radius:6px;margin-left:4px;}
+.icon-btn{background:none;border:none;color:var(--muted);font-size:.95rem;cursor:pointer;padding:4px 8px;}
+.icon-btn:hover{color:var(--red);}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 18px;font-size:.82rem;font-weight:700;z-index:999;box-shadow:0 8px 30px rgba(0,0,0,.5);display:none;}
+</style>
+</head>
+<body>
+<div class="bg-mesh"></div>
+
+<!-- ═══ LOGIN ═══ -->
+<div class="screen active" id="screen-login">
+  <div class="login-box">
+    <div class="login-logo">
+      <span class="logo-icon">🧾</span>
+      <h1>Bill Tracker</h1>
+      <p>Your own spending, private &amp; simple · 🇦🇪 AED</p>
+    </div>
+
+    <div class="error-msg" id="login-error"></div>
+    <div class="success-msg" id="login-success"></div>
+
+    <div class="step active" id="step-email">
+      <label class="form-label">Your email</label>
+      <input type="email" class="form-input" id="email-input" placeholder="you@example.com" autocomplete="email">
+      <button class="btn btn-primary" id="btn-send-otp" onclick="sendOTP()">Send Code →</button>
+      <p style="text-align:center;font-size:.72rem;color:var(--muted);">Only emails already added by your admin can sign in</p>
+    </div>
+
+    <div class="step" id="step-otp">
+      <label class="form-label">Enter the 6-digit code</label>
+      <div class="otp-grid" id="otp-grid"></div>
+      <p class="timer-text" id="timer-text"></p>
+      <button class="btn btn-primary" id="btn-verify" onclick="verifyOTP()">Verify &amp; Enter →</button>
+      <button class="btn btn-ghost" onclick="backToEmail()">← Use a different email</button>
+    </div>
+
+    <div class="step" id="step-not-registered">
+      <div class="not-registered">
+        <span class="big-emoji">🔒</span>
+        <p style="font-weight:800;margin-bottom:6px;">Not added yet</p>
+        <p style="font-size:.82rem;color:var(--muted);margin-bottom:20px;">This email hasn't been added to Bill Tracker. Ask your admin to add you first.</p>
+      </div>
+      <button class="btn btn-ghost" onclick="backToEmail()">← Try another email</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ APP ═══ -->
+<div class="screen" id="screen-app">
+  <div class="app-header">
+    <div>
+      <h2>🧾 Bill Tracker</h2>
+      <p id="header-sub">Your private dashboard</p>
+    </div>
+    <div class="header-right">
+      <button class="btn-admin-panel" id="btn-open-admin" style="display:none;" onclick="openAdmin()">⚙️ Admin</button>
+      <div class="user-pill" onclick="logout()" title="Tap to log out">
+        <div class="av-sm" id="me-avatar" style="background:var(--accent4);"></div>
+        <span class="uname" id="me-name"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOME -->
+  <div class="page active" id="page-home">
+    <div class="month-nav">
+      <button onclick="changeMonth(-1)">‹</button>
+      <span class="mtitle" id="month-title"></span>
+      <button onclick="changeMonth(1)">›</button>
+    </div>
+
+    <div class="summary-grid">
+      <div class="card">
+        <div class="s-label">Spent this month</div>
+        <div class="s-val" id="sum-spent">—</div>
+      </div>
+      <div class="card">
+        <div class="s-label">You owe overall</div>
+        <div class="s-val" id="sum-owe">—</div>
+      </div>
+    </div>
+
+    <button class="report-btn" id="btn-email-report" onclick="emailMyReport()">📧 Email me this month's report</button>
+
+    <div class="section-title">📅 This month's spending</div>
+    <div id="expense-list"></div>
+  </div>
+
+  <!-- ADD EXPENSE -->
+  <div class="page" id="page-add">
+    <div class="section-title">➕ Log a spend</div>
+    <div class="card">
+      <div class="fg">
+        <label>What was it for</label>
+        <input type="text" id="add-desc" placeholder="e.g. Groceries, Fuel, Lunch">
+      </div>
+      <div class="form-row">
+        <div class="fg">
+          <label>Amount (AED)</label>
+          <input type="number" id="add-amount" placeholder="0.00" step="0.01" min="0">
+        </div>
+        <div class="fg">
+          <label>Date</label>
+          <input type="date" id="add-date">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="fg">
+          <label>Card used</label>
+          <select id="add-card"></select>
+        </div>
+        <div class="fg">
+          <label>Category</label>
+          <select id="add-category">
+            <option value="food">🍔 Food</option>
+            <option value="transport">🚗 Transport</option>
+            <option value="shopping">🛍️ Shopping</option>
+            <option value="bills">🧾 Bills</option>
+            <option value="entertainment">🎬 Entertainment</option>
+            <option value="health">💊 Health</option>
+            <option value="other" selected>📦 Other</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-add" onclick="addExpense()">Save Spend</button>
+    </div>
+  </div>
+
+  <!-- CARDS -->
+  <div class="page" id="page-cards">
+    <div class="section-title">💳 Your cards</div>
+    <div class="cards-grid" id="cards-grid"></div>
+    <div class="card">
+      <div class="fg">
+        <label>Add a new card</label>
+        <input type="text" id="new-card-name" placeholder="e.g. HDFC Debit, Cash, Amex">
+      </div>
+      <button class="btn-add" onclick="addCard()">Add Card</button>
+      <p style="text-align:center;font-size:.68rem;color:var(--muted);margin-top:10px;">Just a label — never enter a real card number here</p>
+    </div>
+  </div>
+
+  <!-- OWED -->
+  <div class="page" id="page-owed">
+    <div class="section-title">⚖️ Owed &amp; Settle</div>
+    <div class="card" style="text-align:center;">
+      <div class="s-label">Total you owe right now</div>
+      <div class="s-val" id="owed-balance" style="font-size:1.6rem;">—</div>
+    </div>
+
+    <div class="card">
+      <div class="fg">
+        <label>Record a payment you made</label>
+        <input type="number" id="settle-amount" placeholder="Amount (AED)" step="0.01" min="0">
+      </div>
+      <button class="btn-add" onclick="recordSettlement()">Record Payment</button>
+    </div>
+
+    <div class="section-title" style="font-size:1rem;">Owed entries</div>
+    <div id="owed-list"></div>
+    <div class="section-title" style="font-size:1rem;margin-top:14px;">Payment history</div>
+    <div id="settle-list"></div>
+  </div>
+
+  <div class="bottom-nav">
+    <button class="nav-btn active" onclick="switchPage('home')" id="nav-home"><span class="ni">🏠</span><span class="nl">Home</span></button>
+    <button class="nav-btn" onclick="switchPage('add')" id="nav-add"><span class="ni">➕</span><span class="nl">Add</span></button>
+    <button class="nav-btn" onclick="switchPage('cards')" id="nav-cards"><span class="ni">💳</span><span class="nl">Cards</span></button>
+    <button class="nav-btn" onclick="switchPage('owed')" id="nav-owed"><span class="ni">⚖️</span><span class="nl">Owed</span></button>
+  </div>
+</div>
+
+<!-- ═══ ADMIN OVERLAY ═══ -->
+<div class="admin-overlay" id="admin-overlay">
+  <div class="admin-top">
+    <h2>⚙️ Admin — Bill Tracker</h2>
+    <button class="close-admin" onclick="closeAdmin()">✕</button>
+  </div>
+  <div class="admin-tabs">
+    <button class="admin-tab-btn active" onclick="switchAdminTab('users')" id="atab-users">👥 Users</button>
+    <button class="admin-tab-btn" onclick="switchAdminTab('owed')" id="atab-owed">⚖️ Owed</button>
+    <button class="admin-tab-btn" onclick="switchAdminTab('spending')" id="atab-spending">📊 Spending</button>
+    <button class="admin-tab-btn" onclick="switchAdminTab('reports')" id="atab-reports">📧 Reports</button>
+  </div>
+  <div class="admin-body">
+
+    <div class="admin-tab-page active" id="atp-users">
+      <div class="card">
+        <div class="fg"><label>Email</label><input type="email" id="nu-email" placeholder="person@example.com"></div>
+        <div class="fg"><label>Name</label><input type="text" id="nu-name" placeholder="Full name"></div>
+        <div class="form-row">
+          <div class="fg">
+            <label>Group</label>
+            <select id="nu-group">
+              <option value="general">General user</option>
+              <option value="squad_split">Squad Split</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Admin?</label>
+            <select id="nu-admin"><option value="false">No</option><option value="true">Yes</option></select>
+          </div>
+        </div>
+        <button class="btn-add" onclick="createUser()">+ Add User</button>
+      </div>
+      <button class="btn btn-ghost" style="margin-bottom:14px;" onclick="importFromSquad()">⬇️ Import everyone from Squad Members</button>
+      <div id="admin-users-list"></div>
+    </div>
+
+    <div class="admin-tab-page" id="atp-owed">
+      <div class="card">
+        <div class="fg"><label>Person</label><select id="ow-user"></select></div>
+        <div class="form-row">
+          <div class="fg"><label>Amount (AED)</label><input type="number" id="ow-amount" step="0.01"></div>
+          <div class="fg"><label>Month</label><input type="month" id="ow-month"></div>
+        </div>
+        <div class="fg"><label>Note</label><input type="text" id="ow-note" placeholder="What's this for?"></div>
+        <button class="btn-add" onclick="adminAddOwed()">+ Add Owed Entry</button>
+      </div>
+      <div id="admin-owed-list"></div>
+    </div>
+
+    <div class="admin-tab-page" id="atp-spending">
+      <div class="fg"><label>View spending for</label><select id="sp-user" onchange="loadAdminSpending()"></select></div>
+      <div id="admin-spending-list"></div>
+    </div>
+
+    <div class="admin-tab-page" id="atp-reports">
+      <div class="card">
+        <p style="font-size:.85rem;margin-bottom:12px;">Reports also go out automatically on the 1st of every month (via a scheduled job — see SETUP.md). Use this to send everyone's report right now instead of waiting.</p>
+        <button class="btn-add" onclick="sendAllReports()">📧 Send Everyone's Report Now</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONFIG (same Supabase project as Squad Splitter) ──────────
+const SUPABASE_URL = 'https://lznnetxeklmdrykxtsbm.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6bm5ldHhla2xtZHJ5a3h0c2JtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MTIxMDMsImV4cCI6MjA4ODk4ODEwM30.cD_n9iCvTTkwgtwh2Qt8Ux9iJR2OfkgCutC2eif8JQo';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const CAT_ICONS = {food:'🍔',transport:'🚗',shopping:'🛍️',bills:'🧾',entertainment:'🎬',health:'💊',other:'📦'};
+const CARD_COLORS = ['#4d96ff','#ff6b6b','#ff92d0','#ffd93d','#6bcb77','#b06aff','#ff922b','#4dd0e1'];
+
+// ── STATE ────────────────────────────────────
+let me = null;               // row from app_users
+let currentEmail = '';
+let viewMonth = new Date().toISOString().slice(0,7);
+let myCards = [], myExpenses = [], myOwed = [], mySettlements = [];
+let allUsers = [];
+let timerInterval = null;
+
+function dhs(n){ return `<span class="dhs">${(Number(n)||0).toFixed(2)} <small>AED</small></span>`; }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',2600); }
+function showErr(id,msg){ const e=document.getElementById(id); e.textContent=msg; e.style.display='block'; setTimeout(()=>e.style.display='none',4000); }
+
+// ── INIT ─────────────────────────────────────
+window.onload = async () => {
+  document.getElementById('add-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('ow-month').value = viewMonth;
+  buildOTPBoxes();
+  const saved = sessionStorage.getItem('bt_email');
+  if (saved) {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) { currentEmail = saved; await tryEnter(); }
+  }
+};
+
+// ── LOGIN: send/verify OTP (Supabase Auth, same pattern as Squad Splitter) ──
+async function sendOTP(){
+  const email = document.getElementById('email-input').value.trim();
+  if(!email || !email.includes('@')){ showErr('login-error','Enter a valid email'); return; }
+  currentEmail = email.toLowerCase();
+  const btn = document.getElementById('btn-send-otp');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  const { error } = await sb.auth.signInWithOtp({ email: currentEmail, options:{ shouldCreateUser:true } });
+  btn.disabled = false; btn.textContent = 'Send Code →';
+  if(error){ showErr('login-error', error.message); return; }
+  document.getElementById('step-email').classList.remove('active');
+  document.getElementById('step-otp').classList.add('active');
+  document.getElementById('otp-grid').querySelector('input').focus();
+  startTimer();
+}
+function buildOTPBoxes(){
+  const grid = document.getElementById('otp-grid');
+  grid.innerHTML = '';
+  for(let i=0;i<6;i++){
+    const inp = document.createElement('input');
+    inp.className='otp-box'; inp.maxLength=1; inp.inputMode='numeric';
+    inp.addEventListener('input',(e)=>{ if(e.target.value && i<5) grid.children[i+1].focus(); });
+    inp.addEventListener('keydown',(e)=>{ if(e.key==='Backspace' && !e.target.value && i>0) grid.children[i-1].focus(); });
+    grid.appendChild(inp);
+  }
+}
+function startTimer(){
+  let s=60; const el=document.getElementById('timer-text');
+  clearInterval(timerInterval);
+  timerInterval=setInterval(()=>{ s--; el.innerHTML = s>0 ? `Resend in <span>${s}s</span>` : `<a href="#" onclick="sendOTP();return false;" style="color:var(--accent4);font-weight:800;">Resend code</a>`; if(s<=0) clearInterval(timerInterval); },1000);
+}
+async function verifyOTP(){
+  const code = Array.from(document.querySelectorAll('.otp-box')).map(i=>i.value).join('');
+  if(code.length!==6){ showErr('login-error','Enter all 6 digits'); return; }
+  const btn = document.getElementById('btn-verify');
+  btn.disabled=true; btn.textContent='Verifying…';
+  const { error } = await sb.auth.verifyOtp({ email: currentEmail, token: code, type:'email' });
+  btn.disabled=false; btn.textContent='Verify & Enter →';
+  if(error){ showErr('login-error','Wrong or expired code'); return; }
+  sessionStorage.setItem('bt_email', currentEmail);
+  await tryEnter();
+}
+function backToEmail(){
+  document.getElementById('step-otp').classList.remove('active');
+  document.getElementById('step-not-registered').classList.remove('active');
+  document.getElementById('step-email').classList.add('active');
+  clearInterval(timerInterval);
+}
+async function tryEnter(){
+  const { data, error } = await sb.from('app_users').select('*').ilike('email', currentEmail).maybeSingle();
+  if(error || !data){
+    document.getElementById('step-otp').classList.remove('active');
+    document.getElementById('step-not-registered').classList.add('active');
+    return;
+  }
+  me = data;
+  await enterApp();
+}
+async function logout(){
+  if(!confirm('Log out?')) return;
+  await sb.auth.signOut();
+  sessionStorage.removeItem('bt_email');
+  location.reload();
+}
+
+// ── ENTER APP ────────────────────────────────
+async function enterApp(){
+  document.getElementById('screen-login').classList.remove('active');
+  document.getElementById('screen-app').classList.add('active');
+  document.getElementById('me-avatar').textContent = me.emoji || '😎';
+  document.getElementById('me-avatar').style.background = me.color || '#4d96ff';
+  document.getElementById('me-name').textContent = me.name;
+  document.getElementById('header-sub').textContent = me.group_type==='squad_split' ? 'Squad member · private tracker' : 'Your private dashboard';
+  if(me.is_admin) document.getElementById('btn-open-admin').style.display='inline-block';
+  await loadMyData();
+  renderHome();
+}
+
+async function loadMyData(){
+  const [c,e,o,s] = await Promise.all([
+    sb.from('bill_cards').select('*').ilike('user_email', me.email).order('created_at'),
+    sb.from('bill_expenses').select('*').ilike('user_email', me.email).order('date',{ascending:false}),
+    sb.from('bill_owed').select('*').ilike('user_email', me.email).order('created_at',{ascending:false}),
+    sb.from('bill_settlements').select('*').ilike('user_email', me.email).order('created_at',{ascending:false}),
+  ]);
+  myCards = c.data||[]; myExpenses = e.data||[]; myOwed = o.data||[]; mySettlements = s.data||[];
+  fillCardSelect();
+  renderCards();
+  renderOwed();
+}
+
+// ── NAV ──────────────────────────────────────
+function switchPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.getElementById('nav-'+name).classList.add('active');
+  if(name==='home') renderHome();
+}
+function changeMonth(d){
+  const [y,m]=viewMonth.split('-').map(Number);
+  const nd=new Date(y,m-1+d,1);
+  viewMonth = nd.toISOString().slice(0,7);
+  renderHome();
+}
+
+// ── HOME / EXPENSES ──────────────────────────
+function renderHome(){
+  const MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const [y,m]=viewMonth.split('-').map(Number);
+  document.getElementById('month-title').textContent = `${MN[m-1]} ${y}`;
+  const monthExp = myExpenses.filter(x=>x.month===viewMonth);
+  const spent = monthExp.reduce((a,x)=>a+Number(x.amount),0);
+  document.getElementById('sum-spent').innerHTML = dhs(spent);
+  const totalOwed = myOwed.reduce((a,x)=>a+Number(x.amount),0);
+  const totalSettled = mySettlements.reduce((a,x)=>a+Number(x.amount),0);
+  const bal = totalOwed-totalSettled;
+  const sumOweEl=document.getElementById('sum-owe');
+  sumOweEl.innerHTML = dhs(Math.max(bal,0));
+  sumOweEl.style.color = bal>0 ? 'var(--red)' : 'var(--green)';
+
+  const list=document.getElementById('expense-list');
+  if(!monthExp.length){ list.innerHTML=`<div class="empty-state"><span>🧾</span>No spending logged for this month yet</div>`; return; }
+  list.innerHTML = monthExp.sort((a,b)=>b.date.localeCompare(a.date)).map(x=>{
+    const card = myCards.find(c=>c.id===x.card_id);
+    return `<div class="exp-item-card">
+      <div class="exp-icon">${CAT_ICONS[x.category]||'📦'}</div>
+      <div style="flex:1;">
+        <div class="exp-name">${escapeHtml(x.description)}</div>
+        <div class="exp-meta">${x.date}${card?` · <span class="card-chip" style="background:${card.color}33;color:${card.color};">${escapeHtml(card.card_name)}</span>`:''}</div>
+      </div>
+      <div style="font-weight:800;">${dhs(x.amount)}</div>
+    </div>`;
+  }).join('');
+}
+
+async function emailMyReport(){
+  const btn=document.getElementById('btn-email-report');
+  btn.disabled=true; btn.textContent='Sending…';
+  const { data, error } = await sb.functions.invoke('send-report', { body:{ type:'bill', month: viewMonth } });
+  btn.disabled=false; btn.textContent="📧 Email me this month's report";
+  if(error){ toast('Could not send report — check SETUP.md'); return; }
+  toast('Report on its way to your inbox 📧');
+}
+
+// ── ADD EXPENSE ───────────────────────────────
+function fillCardSelect(){
+  const sel=document.getElementById('add-card');
+  sel.innerHTML = myCards.length ? myCards.map(c=>`<option value="${c.id}">${escapeHtml(c.card_name)}</option>`).join('') : `<option value="">Add a card first →</option>`;
+}
+async function addExpense(){
+  const desc=document.getElementById('add-desc').value.trim();
+  const amount=parseFloat(document.getElementById('add-amount').value);
+  const date=document.getElementById('add-date').value;
+  const cardId=document.getElementById('add-card').value;
+  const category=document.getElementById('add-category').value;
+  if(!desc||!amount||amount<=0||!date){ toast('Fill in description, amount and date'); return; }
+  const month=date.slice(0,7);
+  const { error } = await sb.from('bill_expenses').insert({ user_email:me.email, description:desc, amount, card_id:cardId||null, category, date, month });
+  if(error){ toast('Could not save — try again'); return; }
+  document.getElementById('add-desc').value=''; document.getElementById('add-amount').value='';
+  toast('Spend saved ✓');
+  await loadMyData();
+  viewMonth = month;
+  switchPage('home');
+}
+
+// ── CARDS ─────────────────────────────────────
+function renderCards(){
+  const grid=document.getElementById('cards-grid');
+  grid.innerHTML = myCards.length ? myCards.map(c=>`
+    <div class="card-tile">
+      <button class="cdel" onclick="deleteCard(${c.id})">✕</button>
+      <div class="cdot" style="background:${c.color};"></div>
+      <div class="cname">${escapeHtml(c.card_name)}</div>
+    </div>`).join('') : `<div class="empty-state" style="grid-column:1/-1;"><span>💳</span>No cards yet — add one below</div>`;
+}
+async function addCard(){
+  const name=document.getElementById('new-card-name').value.trim();
+  if(!name){ toast('Enter a card name'); return; }
+  const color=CARD_COLORS[myCards.length % CARD_COLORS.length];
+  const { error } = await sb.from('bill_cards').insert({ user_email:me.email, card_name:name, color });
+  if(error){ toast('Could not add card'); return; }
+  document.getElementById('new-card-name').value='';
+  toast('Card added ✓');
+  await loadMyData();
+}
+async function deleteCard(id){
+  if(!confirm('Remove this card? Past spends stay, just unlinked.')) return;
+  await sb.from('bill_cards').delete().eq('id',id);
+  await loadMyData();
+}
+
+// ── OWED / SETTLE ─────────────────────────────
+function renderOwed(){
+  const totalOwed = myOwed.reduce((a,x)=>a+Number(x.amount),0);
+  const totalSettled = mySettlements.reduce((a,x)=>a+Number(x.amount),0);
+  const bal = totalOwed-totalSettled;
+  const el=document.getElementById('owed-balance');
+  el.innerHTML = dhs(Math.max(bal,0));
+  el.style.color = bal>0 ? 'var(--red)' : 'var(--green)';
+
+  const oList=document.getElementById('owed-list');
+  oList.innerHTML = myOwed.length ? myOwed.map(o=>`
+    <div class="owed-row"><div class="b-left"><div class="b-name">${escapeHtml(o.note||'Owed amount')}</div><div class="b-sub">${o.month}</div></div><div class="b-amt neg">${dhs(o.amount)}</div></div>
+  `).join('') : `<div class="empty-state"><span>✅</span>Nothing added yet</div>`;
+
+  const sList=document.getElementById('settle-list');
+  sList.innerHTML = mySettlements.length ? mySettlements.map(s=>`
+    <div class="owed-row settle"><div class="b-left"><div class="b-name">Payment made</div><div class="b-sub">${s.month}</div></div><div class="b-amt pos">${dhs(s.amount)}</div></div>
+  `).join('') : `<div class="empty-state"><span>💸</span>No payments recorded yet</div>`;
+}
+async function recordSettlement(){
+  const amount=parseFloat(document.getElementById('settle-amount').value);
+  if(!amount||amount<=0){ toast('Enter an amount'); return; }
+  const { error } = await sb.from('bill_settlements').insert({ user_email:me.email, amount, month:viewMonth });
+  if(error){ toast('Could not save'); return; }
+  document.getElementById('settle-amount').value='';
+  toast('Payment recorded ✓');
+  await loadMyData();
+}
+
+// ── ADMIN ──────────────────────────────────────
+async function openAdmin(){
+  document.getElementById('admin-overlay').classList.add('active');
+  await loadAllUsers();
+}
+function closeAdmin(){ document.getElementById('admin-overlay').classList.remove('active'); }
+function switchAdminTab(name){
+  document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.admin-tab-page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('atab-'+name).classList.add('active');
+  document.getElementById('atp-'+name).classList.add('active');
+}
+
+async function loadAllUsers(){
+  const { data } = await sb.from('app_users').select('*').order('created_at');
+  allUsers = data||[];
+  renderAdminUsers();
+  const opts = allUsers.map(u=>`<option value="${u.email}">${escapeHtml(u.name)} (${u.email})</option>`).join('');
+  document.getElementById('ow-user').innerHTML = opts;
+  document.getElementById('sp-user').innerHTML = opts;
+  if(allUsers.length) loadAdminSpending();
+}
+function renderAdminUsers(){
+  const el=document.getElementById('admin-users-list');
+  el.innerHTML = allUsers.length ? allUsers.map(u=>`
+    <div class="user-row">
+      <div class="u-left">
+        <div class="av-sm" style="background:${u.color};">${u.emoji}</div>
+        <div>
+          <div style="font-weight:800;font-size:.85rem;">${escapeHtml(u.name)} ${u.is_admin?'<span class="admin-badge2">ADMIN</span>':''}</div>
+          <div style="font-size:.68rem;color:var(--muted);">${u.email}</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span class="grp-badge ${u.group_type==='squad_split'?'grp-squad':'grp-general'}">${u.group_type==='squad_split'?'Squad':'General'}</span>
+        <button class="icon-btn" onclick="deleteUser(${u.id})">🗑️</button>
+      </div>
+    </div>`).join('') : `<div class="empty-state"><span>👥</span>No one added yet</div>`;
+}
+async function createUser(){
+  const email=document.getElementById('nu-email').value.trim().toLowerCase();
+  const name=document.getElementById('nu-name').value.trim();
+  const group_type=document.getElementById('nu-group').value;
+  const is_admin=document.getElementById('nu-admin').value==='true';
+  if(!email||!name){ toast('Enter email and name'); return; }
+  const emoji=['😎','🦁','🐯','🦊','🐺','🎯','🚀','💎'][allUsers.length%8];
+  const color=CARD_COLORS[allUsers.length%CARD_COLORS.length];
+  const { error } = await sb.from('app_users').insert({ email, name, group_type, is_admin, emoji, color });
+  if(error){ toast(error.code==='23505'?'That email is already added':'Could not add user'); return; }
+  document.getElementById('nu-email').value=''; document.getElementById('nu-name').value='';
+  toast('User added ✓');
+  await loadAllUsers();
+}
+async function deleteUser(id){
+  if(!confirm('Remove this person from Bill Tracker? Their data stays but they can no longer log in.')) return;
+  await sb.from('app_users').delete().eq('id',id);
+  await loadAllUsers();
+}
+async function importFromSquad(){
+  const { data, error } = await sb.from('members_config').select('*');
+  if(error || !data){ toast('Could not read Squad members'); return; }
+  const toAdd = data.filter(m=>m.email && !allUsers.some(u=>u.email.toLowerCase()===m.email.toLowerCase()));
+  if(!toAdd.length){ toast('Nothing new to import'); return; }
+  const rows = toAdd.map(m=>({ email:m.email.toLowerCase(), name:m.name, group_type:'squad_split', is_admin:!!m.is_admin, emoji:m.emoji||'😎', color:m.color||'#4d96ff' }));
+  const { error: insErr } = await sb.from('app_users').insert(rows);
+  if(insErr){ toast('Import failed'); return; }
+  toast(`Imported ${rows.length} squad member(s) ✓`);
+  await loadAllUsers();
+}
+
+async function adminAddOwed(){
+  const user_email=document.getElementById('ow-user').value;
+  const amount=parseFloat(document.getElementById('ow-amount').value);
+  const month=document.getElementById('ow-month').value || viewMonth;
+  const note=document.getElementById('ow-note').value.trim();
+  if(!user_email||!amount){ toast('Pick a person and amount'); return; }
+  const { error } = await sb.from('bill_owed').insert({ user_email, amount, month, note });
+  if(error){ toast('Could not add'); return; }
+  document.getElementById('ow-amount').value=''; document.getElementById('ow-note').value='';
+  toast('Owed entry added ✓');
+  loadAdminOwedList();
+}
+async function loadAdminOwedList(){
+  const { data } = await sb.from('bill_owed').select('*').order('created_at',{ascending:false}).limit(50);
+  const el=document.getElementById('admin-owed-list');
+  el.innerHTML = (data||[]).map(o=>`
+    <div class="owed-row"><div class="b-left"><div class="b-name">${escapeHtml(o.user_email)}</div><div class="b-sub">${escapeHtml(o.note||'')} · ${o.month}</div></div><div class="b-amt neg">${dhs(o.amount)}</div></div>
+  `).join('') || `<div class="empty-state"><span>⚖️</span>No entries yet</div>`;
+}
+document.addEventListener('DOMContentLoaded',()=>{ /* placeholder no-op to keep load order simple */ });
+
+async function loadAdminSpending(){
+  const email=document.getElementById('sp-user').value;
+  if(!email) return;
+  const { data } = await sb.from('bill_expenses').select('*').ilike('user_email',email).order('date',{ascending:false}).limit(60);
+  const el=document.getElementById('admin-spending-list');
+  el.innerHTML = (data||[]).length ? data.map(x=>`
+    <div class="exp-item-card"><div class="exp-icon">${CAT_ICONS[x.category]||'📦'}</div><div style="flex:1;"><div class="exp-name">${escapeHtml(x.description)}</div><div class="exp-meta">${x.date}</div></div><div style="font-weight:800;">${dhs(x.amount)}</div></div>
+  `).join('') : `<div class="empty-state"><span>📊</span>No spending logged yet</div>`;
+}
+async function sendAllReports(){
+  if(!confirm('Send every registered user their report right now?')) return;
+  const { error } = await sb.functions.invoke('send-report', { body:{ mode:'all_bill' } });
+  toast(error ? 'Send failed — check function logs' : 'Sending to everyone now 📨');
+}
+
+// load owed list when that admin tab is first opened
+const _origSwitchAdminTab = switchAdminTab;
+switchAdminTab = function(name){ _origSwitchAdminTab(name); if(name==='owed') loadAdminOwedList(); };
+
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s??''; return d.innerHTML; }
+</script>
+</body>
+</html>
