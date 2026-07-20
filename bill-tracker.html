@@ -147,6 +147,9 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
       <p class="timer-text" id="timer-text"></p>
       <button class="btn btn-primary" id="btn-verify" onclick="verifyOTP()">Verify &amp; Enter →</button>
       <button class="btn btn-ghost" onclick="backToEmail()">← Use a different email</button>
+      <div style="background:rgba(77,150,255,.08);border:1px solid rgba(77,150,255,.25);border-radius:12px;padding:12px 14px;margin-top:14px;font-size:.72rem;color:var(--muted);line-height:1.5;">
+        📭 <b style="color:var(--accent4);">Don't see it after a minute?</b> Check your Spam / Junk folder — look for a sender named <b>"Squad Splitter"</b>. Found it there? Tap <b>Not Spam / Not Junk</b> once — every code after that arrives much faster.
+      </div>
     </div>
 
     <div class="step" id="step-not-registered">
@@ -156,6 +159,12 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
         <p style="font-size:.82rem;color:var(--muted);margin-bottom:20px;">This email hasn't been added to Bill Tracker. Ask your admin to add you first.</p>
       </div>
       <button class="btn btn-ghost" onclick="backToEmail()">← Try another email</button>
+    </div>
+
+    <div class="step" id="step-pick-account">
+      <label class="form-label">Whose account are you managing?</label>
+      <p style="text-align:center;font-size:.78rem;color:var(--muted);margin-bottom:14px;">You've been given delegate access to enter data for someone else.</p>
+      <div id="pick-account-list" style="margin-bottom:10px;"></div>
     </div>
   </div>
 </div>
@@ -168,6 +177,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
       <p id="header-sub">Your private dashboard</p>
     </div>
     <div class="header-right">
+      <a href="index.html" id="link-to-squad" style="display:none;text-decoration:none;background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:7px 12px;font-family:'Fredoka One',cursive;font-size:.78rem;">💸 Squad Splitter</a>
       <button class="btn-admin-panel" id="btn-open-admin" style="display:none;" onclick="openAdmin()">⚙️ Admin</button>
       <div class="user-pill" onclick="logout()" title="Tap to log out">
         <div class="av-sm" id="me-avatar" style="background:var(--accent4);"></div>
@@ -203,41 +213,84 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 
   <!-- ADD EXPENSE -->
   <div class="page" id="page-add">
-    <div class="section-title">➕ Log a spend</div>
-    <div class="card">
-      <div class="fg">
-        <label>What was it for</label>
-        <input type="text" id="add-desc" placeholder="e.g. Groceries, Fuel, Lunch">
+    <div class="section-title">➕ Add</div>
+    <div class="admin-tabs" style="padding:0 0 12px;border:none;">
+      <button class="admin-tab-btn active" onclick="switchAddTab('spend')" id="atab-spend">💵 Personal Spend</button>
+      <button class="admin-tab-btn" onclick="switchAddTab('payee')" id="atab-payee">🤝 Payee Ledger</button>
+    </div>
+
+    <div class="admin-tab-page active" id="addtab-spend">
+      <div class="card">
+        <div class="fg">
+          <label>What was it for</label>
+          <input type="text" id="add-desc" placeholder="e.g. Groceries, Fuel, Lunch">
+        </div>
+        <div class="form-row">
+          <div class="fg">
+            <label>Amount (AED)</label>
+            <input type="number" id="add-amount" placeholder="0.00" step="0.01" min="0">
+          </div>
+          <div class="fg">
+            <label>Date</label>
+            <input type="date" id="add-date">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="fg">
+            <label>Card used</label>
+            <select id="add-card"></select>
+          </div>
+          <div class="fg">
+            <label>Category</label>
+            <select id="add-category">
+              <option value="food">🍔 Food</option>
+              <option value="transport">🚗 Transport</option>
+              <option value="shopping">🛍️ Shopping</option>
+              <option value="bills">🧾 Bills</option>
+              <option value="entertainment">🎬 Entertainment</option>
+              <option value="health">💊 Health</option>
+              <option value="other" selected>📦 Other</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-add" onclick="addExpense()">Save Spend</button>
       </div>
-      <div class="form-row">
+    </div>
+
+    <div class="admin-tab-page" id="addtab-payee">
+      <div class="card">
         <div class="fg">
-          <label>Amount (AED)</label>
-          <input type="number" id="add-amount" placeholder="0.00" step="0.01" min="0">
+          <label>Who do you owe</label>
+          <select id="pe-payee"></select>
         </div>
         <div class="fg">
-          <label>Date</label>
-          <input type="date" id="add-date">
+          <label>Or add someone new</label>
+          <input type="text" id="pe-new-payee" placeholder="e.g. Landlord, Sara, Electricity Co.">
         </div>
-      </div>
-      <div class="form-row">
-        <div class="fg">
-          <label>Card used</label>
-          <select id="add-card"></select>
+        <div class="form-row">
+          <div class="fg">
+            <label>Amount (AED)</label>
+            <input type="number" id="pe-amount" placeholder="0.00" step="0.01" min="0">
+          </div>
+          <div class="fg">
+            <label>Date</label>
+            <input type="date" id="pe-date">
+          </div>
         </div>
         <div class="fg">
-          <label>Category</label>
-          <select id="add-category">
-            <option value="food">🍔 Food</option>
-            <option value="transport">🚗 Transport</option>
-            <option value="shopping">🛍️ Shopping</option>
-            <option value="bills">🧾 Bills</option>
-            <option value="entertainment">🎬 Entertainment</option>
-            <option value="health">💊 Health</option>
-            <option value="other" selected>📦 Other</option>
+          <label>Type</label>
+          <select id="pe-type">
+            <option value="owe">I now owe them this</option>
+            <option value="paid">I paid them this</option>
           </select>
         </div>
+        <div class="fg">
+          <label>Note (optional)</label>
+          <input type="text" id="pe-note" placeholder="What's this for?">
+        </div>
+        <button class="btn-add" onclick="addPayeeEntry()">Save Entry</button>
+        <p style="text-align:center;font-size:.68rem;color:var(--muted);margin-top:10px;">This is separate from what you owe the admin — it's your own private ledger of people you personally owe.</p>
       </div>
-      <button class="btn-add" onclick="addExpense()">Save Spend</button>
     </div>
   </div>
 
@@ -259,22 +312,25 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
   <div class="page" id="page-owed">
     <div class="section-title">⚖️ Owed &amp; Settle</div>
     <div class="card" style="text-align:center;">
-      <div class="s-label">Total you owe right now</div>
+      <div class="s-label">Total you owe the admin</div>
       <div class="s-val" id="owed-balance" style="font-size:1.6rem;">—</div>
     </div>
 
     <div class="card">
       <div class="fg">
-        <label>Record a payment you made</label>
+        <label>Record a payment you made to the admin</label>
         <input type="number" id="settle-amount" placeholder="Amount (AED)" step="0.01" min="0">
       </div>
       <button class="btn-add" onclick="recordSettlement()">Record Payment</button>
     </div>
 
-    <div class="section-title" style="font-size:1rem;">Owed entries</div>
+    <div class="section-title" style="font-size:1rem;">Owed to admin</div>
     <div id="owed-list"></div>
     <div class="section-title" style="font-size:1rem;margin-top:14px;">Payment history</div>
     <div id="settle-list"></div>
+
+    <div class="section-title" style="font-size:1.1rem;margin-top:22px;">🤝 People you owe</div>
+    <div id="payee-balance-list"></div>
   </div>
 
   <div class="bottom-nav">
@@ -317,6 +373,8 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
           </div>
         </div>
         <button class="btn-add" onclick="createUser()">+ Add User</button>
+        <div class="fg" style="margin-top:14px;"><label>Delegate this account to (optional)</label><input type="email" id="nu-delegate" placeholder="assistant@example.com — leave blank for none"></div>
+        <p style="font-size:.68rem;color:var(--muted);margin-top:-8px;margin-bottom:10px;">Whoever logs in with this email can enter data on this person's behalf. Only fill this in when adding/editing the person it applies to.</p>
       </div>
       <button class="btn btn-ghost" style="margin-bottom:14px;" onclick="importFromSquad()">⬇️ Import everyone from Squad Members</button>
       <div id="admin-users-list"></div>
@@ -361,10 +419,11 @@ const CAT_ICONS = {food:'🍔',transport:'🚗',shopping:'🛍️',bills:'🧾',
 const CARD_COLORS = ['#4d96ff','#ff6b6b','#ff92d0','#ffd93d','#6bcb77','#b06aff','#ff922b','#4dd0e1'];
 
 // ── STATE ────────────────────────────────────
-let me = null;               // row from app_users
+let me = null;               // row from app_users — who actually logged in
+let managing = null;         // row from app_users — whose account we're viewing (may be delegated)
 let currentEmail = '';
 let viewMonth = new Date().toISOString().slice(0,7);
-let myCards = [], myExpenses = [], myOwed = [], mySettlements = [];
+let myCards = [], myExpenses = [], myOwed = [], mySettlements = [], myPayees = [], myPayeeEntries = [];
 let allUsers = [];
 let timerInterval = null;
 
@@ -375,12 +434,16 @@ function showErr(id,msg){ const e=document.getElementById(id); e.textContent=msg
 // ── INIT ─────────────────────────────────────
 window.onload = async () => {
   document.getElementById('add-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('pe-date').value = new Date().toISOString().slice(0,10);
   document.getElementById('ow-month').value = viewMonth;
   buildOTPBoxes();
-  const saved = sessionStorage.getItem('bt_email');
-  if (saved) {
-    const { data: { session } } = await sb.auth.getSession();
-    if (session) { currentEmail = saved; await tryEnter(); }
+  // Same login as Squad Splitter — if there's already a verified session
+  // (from either page), skip straight in instead of asking for OTP again.
+  const { data: { session } } = await sb.auth.getSession();
+  if (session?.user?.email) {
+    currentEmail = session.user.email.toLowerCase();
+    sessionStorage.setItem('bt_email', currentEmail);
+    await tryEnter();
   }
 };
 
@@ -433,13 +496,39 @@ function backToEmail(){
   clearInterval(timerInterval);
 }
 async function tryEnter(){
-  const { data, error } = await sb.from('app_users').select('*').ilike('email', currentEmail).maybeSingle();
-  if(error || !data){
+  const [ownRes, delRes] = await Promise.all([
+    sb.from('app_users').select('*').ilike('email', currentEmail).maybeSingle(),
+    sb.from('app_users').select('*').ilike('delegate_email', currentEmail)
+  ]);
+  const own = ownRes.data || null;
+  const delegated = delRes.data || [];
+  if(!own && delegated.length===0){
     document.getElementById('step-otp').classList.remove('active');
     document.getElementById('step-not-registered').classList.add('active');
     return;
   }
-  me = data;
+  if(delegated.length===0){
+    me = own; managing = own;
+    await enterApp();
+    return;
+  }
+  // Has delegate access to at least one account — let them choose.
+  const options = [];
+  if(own) options.push({...own, _label:'Your own account'});
+  delegated.forEach(d=>options.push({...d, _label:'Delegated — '+d.name}));
+  me = own || delegated[0]; // "me" = own identity if it exists, else fall back
+  const list = document.getElementById('pick-account-list');
+  list.innerHTML = options.map((o,i)=>`
+    <button class="btn btn-ghost" style="display:flex;align-items:center;gap:10px;text-align:left;margin-bottom:8px;" onclick="chooseAccount(${i})">
+      <span style="font-size:1.3rem;">${o.emoji||'😎'}</span>
+      <span><b style="display:block;">${o.name}</b><span style="font-size:.72rem;color:var(--muted);">${o._label}</span></span>
+    </button>`).join('');
+  window._accountOptions = options;
+  document.getElementById('step-otp').classList.remove('active');
+  document.getElementById('step-pick-account').classList.add('active');
+}
+async function chooseAccount(i){
+  managing = window._accountOptions[i];
   await enterApp();
 }
 async function logout(){
@@ -453,23 +542,27 @@ async function logout(){
 async function enterApp(){
   document.getElementById('screen-login').classList.remove('active');
   document.getElementById('screen-app').classList.add('active');
-  document.getElementById('me-avatar').textContent = me.emoji || '😎';
-  document.getElementById('me-avatar').style.background = me.color || '#4d96ff';
-  document.getElementById('me-name').textContent = me.name;
-  document.getElementById('header-sub').textContent = me.group_type==='squad_split' ? 'Squad member · private tracker' : 'Your private dashboard';
+  document.getElementById('me-avatar').textContent = managing.emoji || '😎';
+  document.getElementById('me-avatar').style.background = managing.color || '#4d96ff';
+  document.getElementById('me-name').textContent = managing.name + (managing.email!==me.email ? ' (delegated)' : '');
+  document.getElementById('header-sub').textContent = managing.group_type==='squad_split' ? 'Squad member · private tracker' : 'Your private dashboard';
+  if(managing.group_type==='squad_split') document.getElementById('link-to-squad').style.display='inline-block';
   if(me.is_admin) document.getElementById('btn-open-admin').style.display='inline-block';
   await loadMyData();
   renderHome();
 }
 
 async function loadMyData(){
-  const [c,e,o,s] = await Promise.all([
-    sb.from('bill_cards').select('*').ilike('user_email', me.email).order('created_at'),
-    sb.from('bill_expenses').select('*').ilike('user_email', me.email).order('date',{ascending:false}),
-    sb.from('bill_owed').select('*').ilike('user_email', me.email).order('created_at',{ascending:false}),
-    sb.from('bill_settlements').select('*').ilike('user_email', me.email).order('created_at',{ascending:false}),
+  const [c,e,o,s,p,pe] = await Promise.all([
+    sb.from('bill_cards').select('*').ilike('user_email', managing.email).order('created_at'),
+    sb.from('bill_expenses').select('*').ilike('user_email', managing.email).order('date',{ascending:false}),
+    sb.from('bill_owed').select('*').ilike('user_email', managing.email).order('created_at',{ascending:false}),
+    sb.from('bill_settlements').select('*').ilike('user_email', managing.email).order('created_at',{ascending:false}),
+    sb.from('bill_payees').select('*').ilike('user_email', managing.email).order('created_at'),
+    sb.from('bill_payee_entries').select('*').ilike('user_email', managing.email).order('date',{ascending:false}),
   ]);
   myCards = c.data||[]; myExpenses = e.data||[]; myOwed = o.data||[]; mySettlements = s.data||[];
+  myPayees = p.data||[]; myPayeeEntries = pe.data||[];
   fillCardSelect();
   renderCards();
   renderOwed();
@@ -542,7 +635,7 @@ async function addExpense(){
   const category=document.getElementById('add-category').value;
   if(!desc||!amount||amount<=0||!date){ toast('Fill in description, amount and date'); return; }
   const month=date.slice(0,7);
-  const { error } = await sb.from('bill_expenses').insert({ user_email:me.email, description:desc, amount, card_id:cardId||null, category, date, month });
+  const { error } = await sb.from('bill_expenses').insert({ user_email:managing.email, description:desc, amount, card_id:cardId||null, category, date, month });
   if(error){ toast('Could not save — try again'); return; }
   document.getElementById('add-desc').value=''; document.getElementById('add-amount').value='';
   toast('Spend saved ✓');
@@ -565,7 +658,7 @@ async function addCard(){
   const name=document.getElementById('new-card-name').value.trim();
   if(!name){ toast('Enter a card name'); return; }
   const color=CARD_COLORS[myCards.length % CARD_COLORS.length];
-  const { error } = await sb.from('bill_cards').insert({ user_email:me.email, card_name:name, color });
+  const { error } = await sb.from('bill_cards').insert({ user_email:managing.email, card_name:name, color });
   if(error){ toast('Could not add card'); return; }
   document.getElementById('new-card-name').value='';
   toast('Card added ✓');
@@ -595,15 +688,70 @@ function renderOwed(){
   sList.innerHTML = mySettlements.length ? mySettlements.map(s=>`
     <div class="owed-row settle"><div class="b-left"><div class="b-name">Payment made</div><div class="b-sub">${s.month}</div></div><div class="b-amt pos">${dhs(s.amount)}</div></div>
   `).join('') : `<div class="empty-state"><span>💸</span>No payments recorded yet</div>`;
+  renderPayeeBalances();
 }
 async function recordSettlement(){
   const amount=parseFloat(document.getElementById('settle-amount').value);
   if(!amount||amount<=0){ toast('Enter an amount'); return; }
-  const { error } = await sb.from('bill_settlements').insert({ user_email:me.email, amount, month:viewMonth });
+  const { error } = await sb.from('bill_settlements').insert({ user_email:managing.email, amount, month:viewMonth });
   if(error){ toast('Could not save'); return; }
   document.getElementById('settle-amount').value='';
   toast('Payment recorded ✓');
   await loadMyData();
+}
+
+// ── ADD PAGE SUB-TABS ─────────────────────────
+function switchAddTab(name){
+  document.getElementById('atab-spend').classList.toggle('active', name==='spend');
+  document.getElementById('atab-payee').classList.toggle('active', name==='payee');
+  document.getElementById('addtab-spend').classList.toggle('active', name==='spend');
+  document.getElementById('addtab-payee').classList.toggle('active', name==='payee');
+  if(name==='payee') fillPayeeSelect();
+}
+
+// ── PAYEE LEDGER (who I owe — separate from what I owe the admin) ──
+function fillPayeeSelect(){
+  const sel=document.getElementById('pe-payee');
+  sel.innerHTML = '<option value="">— choose or type a new one below —</option>' +
+    myPayees.map(p=>`<option value="${p.id}">${escapeHtml(p.payee_name)}</option>`).join('');
+}
+async function addPayeeEntry(){
+  let payeeId = document.getElementById('pe-payee').value;
+  const newName = document.getElementById('pe-new-payee').value.trim();
+  const amount = parseFloat(document.getElementById('pe-amount').value);
+  const date = document.getElementById('pe-date').value;
+  const entry_type = document.getElementById('pe-type').value;
+  const note = document.getElementById('pe-note').value.trim();
+  if(!amount||amount<=0||!date){ toast('Fill in amount and date'); return; }
+  if(!payeeId && !newName){ toast('Pick or add a payee'); return; }
+  if(!payeeId){
+    const color=CARD_COLORS[myPayees.length % CARD_COLORS.length];
+    const { data, error } = await sb.from('bill_payees').insert({ user_email:managing.email, payee_name:newName, color }).select().maybeSingle();
+    if(error||!data){ toast('Could not add payee'); return; }
+    payeeId = data.id;
+  }
+  const month = date.slice(0,7);
+  const { error } = await sb.from('bill_payee_entries').insert({ user_email:managing.email, payee_id:payeeId, amount, entry_type, note, date, month });
+  if(error){ toast('Could not save entry'); return; }
+  document.getElementById('pe-new-payee').value=''; document.getElementById('pe-amount').value=''; document.getElementById('pe-note').value='';
+  toast('Saved ✓');
+  await loadMyData();
+  switchPage('owed');
+}
+function renderPayeeBalances(){
+  const el=document.getElementById('payee-balance-list');
+  if(!el) return;
+  if(!myPayees.length){ el.innerHTML = `<div class="empty-state"><span>🤝</span>No one added yet — add one from ➕ Add → Payee Ledger</div>`; return; }
+  el.innerHTML = myPayees.map(p=>{
+    const entries = myPayeeEntries.filter(e=>e.payee_id===p.id);
+    const owe = entries.filter(e=>e.entry_type==='owe').reduce((a,x)=>a+Number(x.amount),0);
+    const paid = entries.filter(e=>e.entry_type==='paid').reduce((a,x)=>a+Number(x.amount),0);
+    const bal = owe-paid;
+    return `<div class="owed-row" style="border-color:${p.color};">
+      <div class="b-left"><div class="b-name">${escapeHtml(p.payee_name)}</div><div class="b-sub">${entries.length} entr${entries.length===1?'y':'ies'}</div></div>
+      <div class="b-amt ${bal>0?'neg':'pos'}">${dhs(Math.max(bal,0))}</div>
+    </div>`;
+  }).join('');
 }
 
 // ── ADMIN ──────────────────────────────────────
@@ -637,25 +785,43 @@ function renderAdminUsers(){
         <div>
           <div style="font-weight:800;font-size:.85rem;">${escapeHtml(u.name)} ${u.is_admin?'<span class="admin-badge2">ADMIN</span>':''}</div>
           <div style="font-size:.68rem;color:var(--muted);">${u.email}</div>
+          ${u.delegate_email?`<div style="font-size:.65rem;color:var(--accent2);">🔑 delegate: ${escapeHtml(u.delegate_email)}</div>`:''}
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:6px;">
+      <div style="display:flex;align-items:center;gap:4px;">
         <span class="grp-badge ${u.group_type==='squad_split'?'grp-squad':'grp-general'}">${u.group_type==='squad_split'?'Squad':'General'}</span>
+        <button class="icon-btn" title="Email this person's report" onclick="adminSendOneReport('${u.email}')">📧</button>
+        <button class="icon-btn" title="Set/change delegate" onclick="setDelegate(${u.id},'${u.email}')">🔑</button>
         <button class="icon-btn" onclick="deleteUser(${u.id})">🗑️</button>
       </div>
     </div>`).join('') : `<div class="empty-state"><span>👥</span>No one added yet</div>`;
+}
+async function setDelegate(id,email){
+  const val=prompt(`Delegate ${email}'s account to which email? (leave blank to remove delegate access)`,'');
+  if(val===null) return;
+  const delegate_email = val.trim() ? val.trim().toLowerCase() : null;
+  const { error } = await sb.from('app_users').update({ delegate_email }).eq('id',id);
+  if(error){ toast('Could not update'); return; }
+  toast(delegate_email?'Delegate set ✓':'Delegate removed ✓');
+  await loadAllUsers();
+}
+async function adminSendOneReport(email){
+  if(!confirm(`Email ${email} their report now?`)) return;
+  const { error } = await sb.functions.invoke('send-report', { body:{ type:'bill', month: viewMonth, target_email: email } });
+  toast(error?'Send failed':'Report sent 📧');
 }
 async function createUser(){
   const email=document.getElementById('nu-email').value.trim().toLowerCase();
   const name=document.getElementById('nu-name').value.trim();
   const group_type=document.getElementById('nu-group').value;
   const is_admin=document.getElementById('nu-admin').value==='true';
+  const delegate_email=document.getElementById('nu-delegate').value.trim().toLowerCase()||null;
   if(!email||!name){ toast('Enter email and name'); return; }
   const emoji=['😎','🦁','🐯','🦊','🐺','🎯','🚀','💎'][allUsers.length%8];
   const color=CARD_COLORS[allUsers.length%CARD_COLORS.length];
-  const { error } = await sb.from('app_users').insert({ email, name, group_type, is_admin, emoji, color });
+  const { error } = await sb.from('app_users').insert({ email, name, group_type, is_admin, emoji, color, delegate_email });
   if(error){ toast(error.code==='23505'?'That email is already added':'Could not add user'); return; }
-  document.getElementById('nu-email').value=''; document.getElementById('nu-name').value='';
+  document.getElementById('nu-email').value=''; document.getElementById('nu-name').value=''; document.getElementById('nu-delegate').value='';
   toast('User added ✓');
   await loadAllUsers();
 }
