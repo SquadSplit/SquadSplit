@@ -194,23 +194,14 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
       <p style='font-size:.65rem;color:#444466;margin-top:2px'>v4.0 — production</p>
     </div>
     <div id="step-1" class="step active">
-      <label class="form-label">👤 Who are you?</label>
-      <div class="member-select-grid" id="member-grid"></div>
-      <div id="err1" class="error-msg"></div>
-      <button class="btn btn-primary" onclick="goStep2()">Next →</button>
-    </div>
-    <div id="step-2" class="step">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
-        <span id="sel-badge" style="background:var(--card2);border-radius:10px;padding:8px 14px;font-weight:800;font-size:.88rem;border:1px solid var(--border);"></span>
-        <button onclick="goStep1()" style="background:none;border:none;color:var(--muted);font-size:.78rem;cursor:pointer;">✏️ Change</button>
-      </div>
       <label class="form-label">📧 Your Email Address</label>
       <input type="email" id="email-input" class="form-input" placeholder="youremail@gmail.com" />
       <div id="err2" class="error-msg"></div>
       <div id="succ2" class="success-msg"></div>
       <button class="btn btn-primary" id="btn-send-otp" onclick="sendOTP()">📨 Send OTP</button>
+      <p style="text-align:center;font-size:.68rem;color:var(--muted);margin-top:12px;">One login for everything — Squad Splitter and your personal Bill Tracker.</p>
     </div>
-    <div id="step-3" class="step">
+    <div id="step-2" class="step">
       <div style="text-align:center;margin-bottom:20px;">
         <div style="font-size:2.5rem">📬</div>
         <div style="font-weight:800;margin-top:8px;font-size:.9rem" id="otp-sent-to"></div>
@@ -221,6 +212,15 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
       <div class="timer-text" id="timer-text"></div>
       <button class="btn btn-primary" id="btn-verify" onclick="verifyOTP()">✅ Verify & Enter App</button>
       <button class="btn btn-ghost" id="btn-resend" onclick="resendOTP()" disabled>🔄 Resend OTP</button>
+      <button class="btn btn-ghost" onclick="showStep(1)" style="margin-top:6px;">← Use a different email</button>
+    </div>
+    <div id="step-3" class="step">
+      <div style="text-align:center;margin-bottom:16px;">
+        <div style="font-size:2.5rem">🔒</div>
+        <div style="font-weight:800;margin-top:8px;">Not added yet</div>
+        <div style="font-size:.8rem;color:var(--muted);margin-top:6px;">This email hasn't been added by an admin. Ask your admin to add you first.</div>
+      </div>
+      <button class="btn btn-ghost" onclick="showStep(1)">← Try another email</button>
     </div>
   </div>
 </div>
@@ -431,8 +431,22 @@ window.onload=async()=>{
     try{sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);isDemoMode=false;}catch(e){isDemoMode=true;}
   }
   await loadMembers();
-  renderMemberGrid();
   buildOTPBoxes();
+  // Security: never trust a cached "who's logged in" blob on its own — a
+  // stale copy could show wrong admin status if permissions changed since.
+  // The only real source of truth is a live, currently-valid Supabase
+  // session, re-checked fresh against the database every single load.
+  if(!isDemoMode&&sb){
+    const{data:{session}}=await sb.auth.getSession();
+    if(session?.user?.email){
+      currentEmail=session.user.email.toLowerCase();
+      await routeAfterLogin(true);
+      return;
+    }
+    sessionStorage.removeItem('sq_user'); // no live session — any old cache is meaningless
+    return;
+  }
+  // Demo mode only (no real backend to re-verify against)
   const s=sessionStorage.getItem('sq_user');
   if(s){currentUser=JSON.parse(s);await enterApp();}
 };
@@ -501,7 +515,7 @@ async function sendOTP(){
     setTimeout(()=>{
       btn.innerHTML='📨 Send OTP';btn.disabled=false;
       showSucc('succ2',`✅ OTP sent (Demo mode — use code: 123456)`);
-      setTimeout(()=>{showStep(3);document.getElementById('otp-sent-to').textContent=`Code sent to ${email}`;startTimer();},1200);
+      setTimeout(()=>{showStep(2);document.getElementById('otp-sent-to').textContent=`Code sent to ${email}`;startTimer();},1200);
     },800);return;
   }
   try{
@@ -510,7 +524,7 @@ async function sendOTP(){
     btn.innerHTML='📨 Send OTP';btn.disabled=false;
     if(error){showErr('err2','❌ '+error.message);return;}
     showSucc('succ2',`✅ OTP sent to ${email}`);
-    setTimeout(()=>{showStep(3);document.getElementById('otp-sent-to').textContent=`Code sent to ${email}`;startTimer();},1200);
+    setTimeout(()=>{showStep(2);document.getElementById('otp-sent-to').textContent=`Code sent to ${email}`;startTimer();},1200);
   }catch(e){btn.innerHTML='📨 Send OTP';btn.disabled=false;showErr('err2','❌ Network error.');}
 }
 
@@ -520,8 +534,8 @@ async function verifyOTP(){
   const btn=document.getElementById('btn-verify');
   btn.innerHTML='<span class="loader"></span> Verifying...';btn.disabled=true;hideMsg('err3');
   if(isDemoMode){
-    setTimeout(()=>{btn.innerHTML='✅ Verify & Enter App';btn.disabled=false;
-      if(otp==='123456')finishLogin();
+    setTimeout(async()=>{btn.innerHTML='✅ Verify & Enter App';btn.disabled=false;
+      if(otp==='123456')await routeAfterLogin(false);
       else showErr('err3','❌ Wrong code. Demo: use 123456');
     },700);return;
   }
@@ -529,8 +543,38 @@ async function verifyOTP(){
     const{error}=await sb.auth.verifyOtp({email:currentEmail,token:otp,type:'email'});
     btn.innerHTML='✅ Verify & Enter App';btn.disabled=false;
     if(error){showErr('err3','❌ '+error.message);return;}
-    finishLogin();
+    await routeAfterLogin(false);
   }catch(e){btn.innerHTML='✅ Verify & Enter App';btn.disabled=false;showErr('err3','❌ Verification failed.');}
+}
+
+// ── ROUTE: decide Squad Splitter vs Bill Tracker vs not-registered ──
+// This is the single point that turns "a verified email" into "the right
+// screen" — looked up fresh from app_users every time, never guessed.
+async function routeAfterLogin(silent){
+  if(isDemoMode||!sb){
+    selectedId=MEMBERS[0]?.id||null;
+    if(selectedId)finishLogin();else if(!silent)showStep(3);
+    return;
+  }
+  const{data,error}=await sb.from('app_users').select('*').ilike('email',currentEmail).maybeSingle();
+  if(error||!data){
+    if(!silent)showStep(3);
+    return;
+  }
+  if(data.group_type==='general'){
+    // Personal-only account — Squad Splitter has nothing to show them.
+    sessionStorage.setItem('bt_email',currentEmail.toLowerCase());
+    window.location.href='bill-tracker.html';
+    return;
+  }
+  // squad_split — find their matching squad roster entry by email.
+  const m=MEMBERS.find(x=>(x.email||'').toLowerCase()===currentEmail.toLowerCase());
+  if(!m){
+    if(!silent)showErr('err3','⚠️ Marked as a squad member but not yet on the squad roster — ask your admin to add you in Members, or use the My Tracker link for your personal tracker.');
+    return;
+  }
+  selectedId=m.id;
+  finishLogin();
 }
 
 function finishLogin(){
@@ -1085,12 +1129,19 @@ function renderAdminMembers(){
       </div>
       <div style="display:flex;gap:8px;margin-top:6px;">
         <button class="btn-save-member" onclick="saveMember(${i})" style="flex:1">💾 Save</button>
+        ${m.email?`<button onclick="adminSendSquadReport('${m.id}','${m.email}')" title="Email this member's report" style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--card2);color:var(--text);font-weight:800;cursor:pointer;">📧</button>`:''}
         ${MEMBERS.length>2&&!m.isAdmin?`<button onclick="removeMember(${i})" style="padding:8px 14px;border-radius:10px;border:none;background:rgba(255,107,107,.15);color:var(--red);font-weight:800;cursor:pointer;border:1px solid rgba(255,107,107,.3)">🗑️</button>`:''}
       </div>
     </div>`).join('')}
   <button onclick="addNewMember()" style="width:100%;padding:14px;border-radius:14px;border:2px dashed var(--border);background:transparent;color:var(--accent2);font-family:'Fredoka One',cursive;font-size:1rem;cursor:pointer;margin-top:8px">
     ➕ Add New Member
   </button>`;
+}
+async function adminSendSquadReport(memberId,toEmail){
+  if(isDemoMode||!sb){showToast('📧 Needs the live database');return;}
+  if(!confirm(`Email ${toEmail} their Squad Splitter report now?`))return;
+  const{error}=await sb.functions.invoke('send-report',{body:{type:'squad',member_id:memberId,to_email:toEmail,month:viewMonth}});
+  showToast(error?'⚠️ Send failed':`📧 Sent to ${toEmail}`);
 }
 
 async function saveMember(i){
